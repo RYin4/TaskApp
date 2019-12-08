@@ -61,10 +61,37 @@
         width: 100%;
         color: black;
         margin-bottom: 5px;
-        
+
         &:hover {
             background: $light;
         }
+
+        &.is-active {
+            background-color: aquamarine;
+            color: black;
+
+
+        }
+
+    }
+}
+
+.task {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 5px;
+    margin-top: 10px;
+
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+    &:active {
+        transform: scale(0.95);
+    }
+
+    &:hover {
+        box-shadow: 0 0 0 5px #eeeeee;
+
 
     }
 }
