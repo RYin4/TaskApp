@@ -16,10 +16,10 @@
 
     
     <div class="task-list-container has-background-light">
-      <h1 class="title has-text-primary">Tasks</h1>
+      <h1 class="title has-text-primary">Tasks</h1> 
 
       <!-- Tasks -->
-      <div class="task" *ngFor='let task of tasks'>
+      <div class="task" *ngFor='let task of tasks' (click)="onTaskClick(task)" [ngClass]="{'completed': task.completed}">
         <p>{{ task.title }}</p>
       </div>
 

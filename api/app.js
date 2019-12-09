@@ -14,6 +14,7 @@ app.use(bodyParser.json())
 // CORS HEADERS MIDDLEWARE
 app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*"); // update to match the domain you will make the request from
+    res.header("Access-Control-Allow-Methods", "GET, POST, HEAD, OPTIONS, PUT, PATCH, DELETE");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
   });
@@ -63,14 +64,14 @@ app.delete('/lists/:id', (req, res) => {
 //purpose: get all tasks in a specific list
 app.get('/lists/:listId/tasks', (req, res) => {
     Task.find({
-        _listId: req.params._listId
+        _listId: req.params.listId
     }).then((tasks) => {
         res.send(tasks)
     })
 })
 
 //POST /lists/:listId/tasks
-//purpose: create a new task in a specific list 
+//purpose: create a new task in a specific list  
 app.post('/lists/:listId/tasks', (req, res) => {
     let newTask = new Task({
         title: req.body.title,
@@ -87,12 +88,13 @@ app.patch('/lists/:listId/tasks/:taskId', (req, res) => {
     Task.findOneAndUpdate({
         _id: req.params.taskId,
         _listId: req.params.listId
-    }), {
+    }, {
         $set: req.body
-    }.then(() => {
-        res.sendStatus(200)
+        }
+    ).then(() => {
+        res.send({message: "Updated Sucessfully"})
     })
-})
+})  
 
 //DELETE /lists/:listId/tasks/:taskId
 //purpose: delete a task
