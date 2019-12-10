@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const _ = require('lodash')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
+const bcrypt = request('bcryptjs')
 
 //random string as jwt secret
 const jwtSecret = "51778657246321226641fsdklafjasdkljfsklfjd7148924065";
@@ -75,6 +76,57 @@ UserScehma.methods.createSession = function() {
         return promise.reject('Failed to save session to database. \n' + e)
     })
 }
+
+//model (static) methods
+UserScehma.statics.findById = function(_id, token) {
+    const user = this
+    return user.findOne({
+        _id, 
+        'session token': token
+    })
+}
+
+UserSchema.statics.findByCredentials = function (email, password) {
+    let User = this;
+    return User.findOne({ email }).then((user) => {
+        if (!user) return Promise.reject();
+
+        return new Promise((resolve, reject) => {
+            bcrypt.compare(password, user.password, (err, res) => {
+                if (res) {
+                    resolve(user);
+                }
+                else {
+                    reject();
+                }
+            })
+        })
+    })
+}
+
+
+//middleware 
+UserScehma.pre('save', function(next) {
+    let user = this
+    //number of hashing rounds 
+    let costFactor = 10
+
+    if (user.isModified('password')) {
+        //if the password field has been changed then run this 
+        //generate salt and hash password
+        bcrypt.genSalt(costFactor, (err, salt) => {
+            bcrypt.hash(user.password, salt, (err, hash) => {
+                user.password = hash
+                next()
+            })
+        })
+    } else  {
+        next()
+    }
+    
+})
+
+
 
 
 //helper methods
