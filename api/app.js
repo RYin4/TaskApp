@@ -52,7 +52,7 @@ let verifySession = (req, res, next) => {
                 'error': 'User not found. Make sure that the refresh token and user id are correct'
             });
         }
-        
+
         // if the code reaches here - the user was found
         // therefore the refresh token exists in the database - but we still have to check if it has expired or not
 
@@ -233,11 +233,10 @@ app.post('/users/login', (req, res) => {
     });
 })
 
-/**
- * GET /users/me/access-token
- * Purpose: generates and returns an access token
- */
-app.get('/users/me/access-token', verifySession, (req, res) => {
+
+ //GET /users/me/access-token
+ //Purpose: generates and returns an access token
+ app.get('/users/me/access-token', verifySession, (req, res) => {
     // we know that the user/caller is authenticated and we have the user_id and user object available to us
     req.userObject.generateAccessAuthToken().then((accessToken) => {
         res.header('x-access-token', accessToken).send({ accessToken });
