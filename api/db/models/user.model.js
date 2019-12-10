@@ -1,26 +1,26 @@
-const mongoose = require('mongoose')
-const _ = require('lodash')
-const jwt = require('jsonwebtoken')
-const crypto = require('crypto')
-const bcrypt = request('bcryptjs')
+const mongoose = require('mongoose');
+const _ = require('lodash');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
-//random string as jwt secret
+
+// JWT Secret
 const jwtSecret = "51778657246321226641fsdklafjasdkljfsklfjd7148924065";
 
-const userScehma = new mongooseSchema({
+const UserSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        minLength: 1,
+        minlength: 1,
         trim: true,
         unique: true
     },
     password: {
         type: String,
         required: true,
-        minLength: 8
+        minlength: 8
     },
-    //array of objects
     sessions: [{
         token: {
             type: String,
@@ -28,63 +28,87 @@ const userScehma = new mongooseSchema({
         },
         expiresAt: {
             type: Number,
-            requried: true
+            required: true
         }
     }]
-})
+});
 
-//override the default JSON methods
-UserScehma.methods.toJSON = function() {
-    const user = this
-    const userObject = user.toObject()
-    //omit the password and session
-    return _.omit(userObject, ['password', 'sessions'])
+
+// *** Instance methods ***
+
+UserSchema.methods.toJSON = function () {
+    const user = this;
+    const userObject = user.toObject();
+
+    // return the document except the password and sessions (these shouldn't be made available)
+    return _.omit(userObject, ['password', 'sessions']);
 }
 
-UserScehma.methods.generateAccessAuthToken = function() {
-    const user = this
-    return new promise((resolve, reject) => {
-        //create JSON web token and return that 
-        jwt.sign({ _id: user._id.toHexString()}, jwtSecret, { expiresIn: "15m "}, (err, token) => {
+UserSchema.methods.generateAccessAuthToken = function () {
+    const user = this;
+    return new Promise((resolve, reject) => {
+        // Create the JSON Web Token and return that
+        jwt.sign({ _id: user._id.toHexString() }, jwtSecret, { expiresIn: "15m" }, (err, token) => {
             if (!err) {
-                resolve(token)
+                resolve(token);
             } else {
-                reject()
+                // there is an error
+                reject();
             }
         })
     })
 }
 
-UserScehma.methods.generateRefreshAuthToken = function() {
-    return new promise((resolve, reject) => {
+UserSchema.methods.generateRefreshAuthToken = function () {
+    // This method simply generates a 64byte hex string - it doesn't save it to the database. saveSessionToDatabase() does that.
+    return new Promise((resolve, reject) => {
         crypto.randomBytes(64, (err, buf) => {
             if (!err) {
-                let token = buf.toString('hex')
-                return resolve(token)
+                // no error
+                let token = buf.toString('hex');
+
+                return resolve(token);
             }
         })
     })
 }
 
-UserScehma.methods.createSession = function() {
-    let user = this
+UserSchema.methods.createSession = function () {
+    let user = this;
+
     return user.generateRefreshAuthToken().then((refreshToken) => {
-        return saveSessionToDatabase(user, refreshToken)
+        return saveSessionToDatabase(user, refreshToken);
     }).then((refreshToken) => {
-        return refreshToken
+        // saved to database successfully
+        // now return the refresh token
+        return refreshToken;
     }).catch((e) => {
-        return promise.reject('Failed to save session to database. \n' + e)
+        return Promise.reject('Failed to save session to database.\n' + e);
     })
 }
 
-//model (static) methods
-UserScehma.statics.findById = function(_id, token) {
-    const user = this
-    return user.findOne({
-        _id, 
-        'session token': token
-    })
+
+
+/* MODEL METHODS (static methods) */
+
+UserSchema.statics.getJWTSecret = () => {
+    return jwtSecret;
 }
+
+
+
+UserSchema.statics.findByIdAndToken = function (_id, token) {
+    // finds user by id and token
+    // used in auth middleware (verifySession)
+
+    const User = this;
+
+    return User.findOne({
+        _id,
+        'sessions.token': token
+    });
+}
+
 
 UserSchema.statics.findByCredentials = function (email, password) {
     let User = this;
@@ -104,44 +128,54 @@ UserSchema.statics.findByCredentials = function (email, password) {
     })
 }
 
+UserSchema.statics.hasRefreshTokenExpired = (expiresAt) => {
+    let secondsSinceEpoch = Date.now() / 1000;
+    if (expiresAt > secondsSinceEpoch) {
+        // hasn't expired
+        return false;
+    } else {
+        // has expired
+        return true;
+    }
+}
 
-//middleware 
-UserScehma.pre('save', function(next) {
-    let user = this
-    //number of hashing rounds 
-    let costFactor = 10
+
+/* MIDDLEWARE */
+// Before a user document is saved, this code runs
+UserSchema.pre('save', function (next) {
+    let user = this;
+    let costFactor = 10;
 
     if (user.isModified('password')) {
-        //if the password field has been changed then run this 
-        //generate salt and hash password
+        // if the password field has been edited/changed then run this code.
+
+        // Generate salt and hash password
         bcrypt.genSalt(costFactor, (err, salt) => {
             bcrypt.hash(user.password, salt, (err, hash) => {
-                user.password = hash
-                next()
+                user.password = hash;
+                next();
             })
         })
-    } else  {
-        next()
+    } else {
+        next();
     }
-    
-})
+});
 
 
-
-
-//helper methods
+/* HELPER METHODS */
 let saveSessionToDatabase = (user, refreshToken) => {
-    //save session to database
-    return new promise((resolve, reject) => {
-        let expiresAt = generateRefreshTokenExpiryTime()
-        //takes user doc and push to session array
-        user.session.push({ 'token': refreshToken, expiresAt})
+    // Save session to database
+    return new Promise((resolve, reject) => {
+        let expiresAt = generateRefreshTokenExpiryTime();
+
+        user.sessions.push({ 'token': refreshToken, expiresAt });
 
         user.save().then(() => {
-            return resolve(refreshToken)
+            // saved session successfully
+            return resolve(refreshToken);
         }).catch((e) => {
-            reject(e)
-        })
+            reject(e);
+        });
     })
 }
 
@@ -150,3 +184,7 @@ let generateRefreshTokenExpiryTime = () => {
     let secondsUntilExpire = ((daysUntilExpire * 24) * 60) * 60;
     return ((Date.now() / 1000) + secondsUntilExpire);
 }
+
+const User = mongoose.model('User', UserSchema);
+
+module.exports = { User }
