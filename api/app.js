@@ -154,50 +154,112 @@ app.delete('/lists/:id', authenticate, (req, res) => {
 
 //GET /lists/:listId/tasks
 //purpose: get all tasks in a specific list
-app.get('/lists/:listId/tasks', (req, res) => {
+app.get('/lists/:listId/tasks', authenticate, (req, res) => {
+    // We want to return all tasks that belong to a specific list (specified by listId)
     Task.find({
         _listId: req.params.listId
     }).then((tasks) => {
-        res.send(tasks)
+        res.send(tasks);
     })
-})
+});
 
 //POST /lists/:listId/tasks
 //purpose: create a new task in a specific list  
-app.post('/lists/:listId/tasks', (req, res) => {
-    let newTask = new Task({
-        title: req.body.title,
-        _listId: req.params.listId
-    })
-    newTask.save().then((newTaskDoc) => {
-        res.send(newTaskDoc)
+app.post('/lists/:listId/tasks', authenticate, (req, res) => {
+    // We want to create a new task in a list specified by listId
+
+    List.findOne({
+        _id: req.params.listId,
+        _userId: req.user_id
+    }).then((list) => {
+        if (list) {
+            // list object with the specified conditions was found
+            // therefore the currently authenticated user can create new tasks
+            return true;
+        }
+
+        // else - the list object is undefined
+        return false;
+    }).then((canCreateTask) => {
+        if (canCreateTask) {
+            let newTask = new Task({
+                title: req.body.title,
+                _listId: req.params.listId
+            });
+            newTask.save().then((newTaskDoc) => {
+                res.send(newTaskDoc);
+            })
+        } else {
+            res.sendStatus(404);
+        }
     })
 })
 
 //PATCH /lists/:listId/tasks/:taskId
 //purpose: update an existing task
-app.patch('/lists/:listId/tasks/:taskId', (req, res) => {
-    Task.findOneAndUpdate({
-        _id: req.params.taskId,
-        _listId: req.params.listId
-    }, {
-        $set: req.body
+app.patch('/lists/:listId/tasks/:taskId', authenticate, (req, res) => {
+    // We want to update an existing task (specified by taskId)
+
+    List.findOne({
+        _id: req.params.listId,
+        _userId: req.user_id
+    }).then((list) => {
+        if (list) {
+            // list object with the specified conditions was found
+            // therefore the currently authenticated user can make updates to tasks within this list
+            return true;
         }
-    ).then(() => {
-        res.send({message: "Updated Sucessfully"})
+
+        // else - the list object is undefined
+        return false;
+    }).then((canUpdateTasks) => {
+        if (canUpdateTasks) {
+            // the currently authenticated user can update tasks
+            Task.findOneAndUpdate({
+                _id: req.params.taskId,
+                _listId: req.params.listId
+            }, {
+                    $set: req.body
+                }
+            ).then(() => {
+                res.send({ message: 'Updated successfully.' })
+            })
+        } else {
+            res.sendStatus(404);
+        }
     })
-})  
+});
 
 //DELETE /lists/:listId/tasks/:taskId
 //purpose: delete a task
-app.patch('/lists/:listId/tasks/:taskId', (req, res) => {
-    Task.findOneAndRemove({
-        _id: req.params.taskId,
-        _listId: req.params._listId
-    }).then((removedTaskDoc) => {
-        res.send(removedTaskDoc)
-    })
-})
+app.delete('/lists/:listId/tasks/:taskId', authenticate, (req, res) => {
+
+    List.findOne({
+        _id: req.params.listId,
+        _userId: req.user_id
+    }).then((list) => {
+        if (list) {
+            // list object with the specified conditions was found
+            // therefore the currently authenticated user can make updates to tasks within this list
+            return true;
+        }
+
+        // else - the list object is undefined
+        return false;
+    }).then((canDeleteTasks) => {
+        
+        if (canDeleteTasks) {
+            Task.findOneAndRemove({
+                _id: req.params.taskId,
+                _listId: req.params.listId
+            }).then((removedTaskDoc) => {
+                res.send(removedTaskDoc);
+            })
+        } else {
+            res.sendStatus(404);
+        }
+    });
+});
 
 //user routes
 
