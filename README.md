@@ -1,4 +1,4 @@
-# Task Manager App
+# Task Manager Web Application
 
 ![Application Design Illustration](loginScreenshot.png)
 ![Application Design Illustration](signupScreenshot.png)
@@ -12,5 +12,5 @@
 ![Application Design Illustration](listScreenshot7.png)
 
 
-> Don't forget to run `npm install` in both the **api** and **frontend** folders to install dependencies
+> Run `npm install` in both the **api** and **frontend** folders to install dependencies
 
